@@ -128,5 +128,4 @@ submission = pd.DataFrame({
 submission.to_csv('submission.csv', index=False)
 ```
 ### **結果**
-這樣就成功完成 Titanic 生存預測啦！  
-模型準確率達到 0.76076%。
+這樣就成功完成 Titanic 生存預測啦！模型準確率達到 0.76076%。
