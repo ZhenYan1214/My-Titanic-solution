@@ -1,87 +1,132 @@
+# Kaggle 實作分享：Titanic 生存預測
+
 ## 介紹
-因為是第一次接觸Kaggle，就選擇了大家都推薦的Titanic作為練習，他的目標就是要預測鐵達尼號乘客是否生還。
-下載檔案後會有兩個csv檔案，Train和Test，分別是用來「訓練模型」和評估模型的「預測效果」，簡單講就是學校的學習資料和考試資料。  
-  
-接下來是我的解題步驟，我是用最簡單的方式來進行預測，具體步驟如下：    
 
-1.讀檔  
-2.檢查數據信息 (info、describe、isnull.sum)  
-3.處理缺失值(fillna、drop、map、get_dummies)  
-4.加入需要的特徵Features  
-5.再次檢查缺失值  
-6.訓練模型(Random Forest)  
-7.評估模型(Accuracy_Score)  
+這是我第一次接觸 Kaggle，比賽選擇了大家推薦的入門題目 —— **Titanic 生存預測** 作為練習。  
+本比賽的目標是預測鐵達尼號乘客是否生還，並使用提供的資料進行特徵工程和模型訓練。  
+比賽提供了兩個 CSV 文件：
+- **Train.csv**：用於訓練模型（學習資料）。
+- **Test.csv**：用於測試模型預測效果（考試資料）。
 
-## 以下將詳細介紹：  
-一開始一定是先讀取檔案！     
-我這邊是用絕對位置的方式來讀檔  
+以下是我的解題步驟：
 
+1. 讀檔  
+2. 檢查數據信息（info、describe、isnull.sum）  
+3. 處理缺失值（fillna、drop、map、get_dummies）  
+4. 加入需要的特徵（Features）  
+5. 再次檢查缺失值  
+6. 訓練模型（Random Forest）  
+7. 評估模型（Accuracy_Score）  
+8. 創建提交文件  
+
+---
+
+## 解題步驟
+
+### **1. 讀檔**
+首先，讀取比賽提供的 CSV 資料集，並檢查前五筆資料：
+
+```python
 train_data = pd.read_csv(r'C:/Users/User/OneDrive/桌面/Py/Pandas/titanic/train.csv')  
 test_data = pd.read_csv(r'C:/Users/User/OneDrive/桌面/Py/Pandas/titanic/test.csv')  
-print(train_data.head())   #檢視前五筆資料，確定有正確讀檔  
+
+print(train_data.head())  # 檢視前五筆資料
+
 
 接下來，就是查看data的基本資料  
 
 print(train_data.info())  # 查看資料概要  
 print(train_data.describe())  # 查看統計摘要  
+```
+### **2. 檢查數據信息**
+使用基本方法檢查數據的結構和統計摘要，並查看是否有缺失值：
 
-再來看有沒有缺失值  
+```python
+# 查看資料概要
+print(train_data.info())
 
-print(train_data.isnull().sum())  # 檢查缺失值  
+# 查看統計摘要
+print(train_data.describe())
 
-然後將有問題的數據進行資料清洗  
-我們可以看到Age跟Embarked都是有缺失值的，所以分別使用了中位數和眾數進行填補  
+# 檢查缺失值
+print(train_data.isnull().sum())
+```
+### **3. 處理缺失值**
+根據檢查結果，對缺失值進行填補或刪除：
 
-train_data['Age'].fillna(train_data['Age'].median(), inplace=True)  
-test_data['Age'].fillna(test_data['Age'].median(), inplace=True)  
-train_data['Embarked'].fillna(train_data['Embarked'].mode()[0], inplace=True)  
+Age：用中位數填補。
+Embarked：用眾數填補。
+Cabin：刪除該欄位，因為缺失值過多。
+```python
+# 填補缺失值
+train_data['Age'].fillna(train_data['Age'].median(), inplace=True)
+test_data['Age'].fillna(test_data['Age'].median(), inplace=True)
+train_data['Embarked'].fillna(train_data['Embarked'].mode()[0], inplace=True)
 
-然後Carbin資料過少，沒有甚麼用處，我們就選擇刪除   
+# 刪除 Cabin 欄位
+train_data.drop('Cabin', axis=1, inplace=True)
+test_data.drop('Cabin', axis=1, inplace=True)
+```
+### **4. 特徵工程**
+將性別（文字類型）轉換為數值類型（0 和 1）。
+使用 One-Hot Encoding 處理 Embarked 多類別特徵。
+選擇與生存率關係較強的特徵作為模型輸入。
+```python
+# 性別轉換
+train_data['Sex'] = train_data['Sex'].map({'male': 0, 'female': 1})
+test_data['Sex'] = test_data['Sex'].map({'male': 0, 'female': 1})
 
-train_data.drop('Cabin',axis=1,inplace=True)  
-test_data.drop('Cabin',axis=1,inplace=True)  
+# One-Hot Encoding
+train_data = pd.get_dummies(train_data, columns=['Embarked'], drop_first=True)
+test_data = pd.get_dummies(test_data, columns=['Embarked'], drop_first=True)
 
-接下來，我將性別(字串)轉成0、1(數值)  
-
-train_data['Sex'] = train_data['Sex'].map({'male': 0, 'female': 1})  
-test_data['Sex'] = test_data['Sex'].map({'male': 0, 'female': 1})  
-
-因為Embarked是一個多類別特徵，所以我們使用one hot encoding來解讀，才能避免順序問題，確保類別資料被正確解讀  
-
-train_data = pd.get_dummies(train_data, columns=['Embarked'], drop_first=True)  
-test_data = pd.get_dummies(test_data, columns=['Embarked'], drop_first=True)  
-
-然後加上我們最重要的特徵，我會選擇這些是因為他們跟存活率都有明確的關聯，舉例來說，可以看出女性和艙等存活率都特別高，又或者是小孩跟老人的存活率明顯不同    
-把她轉換成X跟Y是為了特徵分割，分別將X用來訓練，Y用來預測  
-
-
-features =  ['Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare', 'Embarked_Q', 'Embarked_S']
+# 選擇特徵
+features = ['Pclass', 'Sex', 'Age', 'SibSp', 'Parch', 'Fare', 'Embarked_Q', 'Embarked_S']
 X_train = train_data[features]
 Y_train = train_data['Survived']
-X_test = test_data[features]  
+X_test = test_data[features]
+```
+補充處理測試集中 Fare 的缺失值：
+```python
+X_test['Fare'].fillna(X_test['Fare'].median(), inplace=True)
+```
+### **5. 訓練模型**
+選擇 Random Forest 作為分類模型，並設定隨機種子（random_state=42）和 100 顆決策樹。
 
-我們這邊又填補Fare的原因是因為，Fare的缺失值只存在於測試集  
-我們在print一次就能夠發現他有缺失值  
+```python
+from sklearn.ensemble import RandomForestClassifier
 
-print(X_train.isnull().sum())
-print(X_test.isnull().sum())
-X_test['Fare'].fillna(X_test['Fare'].median(),inplace=True)  
+# 建立並訓練模型
+model = RandomForestClassifier(random_state=42, n_estimators=100)
+model.fit(X_train, Y_train)
 
-最後就是訓練我們的模組，我採用的是RandomForest，並設定他的種子值為42，樹的數量為100，因為她能夠處理多種特徵類型，也不容易發生過度擬合  
+# 預測訓練集
+train_predictions = model.predict(X_train)
+```
+### **6. 模型評估**
+使用 Accuracy Score 評估模型在訓練集上的準確率：
 
-model = RandomForestClassifier(random_state=42,n_estimators=100)  
-model.fit(X_train,Y_train)  
-predictions = model.predict(X_test)  
-train_predictions = model.predict(X_train)  
+```python
+from sklearn.metrics import accuracy_score
 
-最後就是創建提交文件  
-submission = pd.DataFrame({'PassengerId': test_data['PassengerId'], 'Survived': predictions})    
-submission.to_csv('submission.csv', index=False)  
+# 計算訓練集準確率
+accuracy = accuracy_score(Y_train, train_predictions)
+print(f"模型準確率: {accuracy:.4f}")
+```
+### **7. 預測與提交**
+使用測試集進行預測，並將結果保存為提交格式的 CSV 檔案：
 
-就完成啦
+```python
+# 預測測試集
+predictions = model.predict(X_test)
 
-
-
-
-
-
+# 創建提交文件
+submission = pd.DataFrame({
+    'PassengerId': test_data['PassengerId'],
+    'Survived': predictions
+})
+submission.to_csv('submission.csv', index=False)
+```
+### **結果**
+這樣就成功完成 Titanic 生存預測啦！  
+模型準確率達到 0.76076%。
